@@ -50,6 +50,7 @@ sed -i "s|^# CC = .*|CC = gcc|"                     config.mk
 # ---- 手动编译 dwm ----
 echo "[4/5] 编译 dwm ..."
 cd "$BASE/dwm-build"
+cp config.def.h config.h
 gcc -std=c99 -pedantic -Wall -Os \
     -I${PREFIX}/include \
     -I${PREFIX}/include/freetype2 \
@@ -63,6 +64,7 @@ echo "  dwm: $(file dwm | cut -d, -f1)"
 # ---- 手动编译 st ----
 echo "[5/5] 编译 st ..."
 cd "$BASE/st-build"
+cp config.def.h config.h
 gcc -O1 \
     -I${PREFIX}/include \
     $(pkg-config --cflags fontconfig freetype2 2>/dev/null) \
