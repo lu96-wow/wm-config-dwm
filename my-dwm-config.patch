@@ -1,0 +1,67 @@
+--- config.def.h
++++ config.h
+@@ -63,29 +63,44 @@
+ 
+ static const Key keys[] = {
+ 	/* modifier                     key        function        argument */
+-	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
+-	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
+-	{ MODKEY,                       XK_b,      togglebar,      {0} },
++	/* ===== 焦点/窗口操作 ===== */
++	/* 方向键切换焦点 (线性客户端链表前后移动) */
++	{ MODKEY,                       XK_Left,   focusstack,     {.i = -1 } },
++	{ MODKEY,                       XK_Right,  focusstack,     {.i = +1 } },
++	{ MODKEY,                       XK_Up,     focusstack,     {.i = -1 } },
++	{ MODKEY,                       XK_Down,   focusstack,     {.i = +1 } },
++	/* 终端 & 关闭窗口 */
++	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
++	{ MODKEY,                       XK_BackSpace, killclient,  {0} },
++	/* ===== 主区域宽度 (mfact) ===== */
++	{ MODKEY,                       XK_d,      setmfact,       {.f = +0.05} },
++	{ MODKEY,                       XK_a,      setmfact,       {.f = -0.05} },
++	/* ===== 主窗口数 (nmaster) ===== */
++	{ MODKEY,                       XK_c,      incnmaster,     {.i = +1 } },
++	{ MODKEY,                       XK_z,      incnmaster,     {.i = -1 } },
++	/* ===== 布局切换 ===== */
++	{ MODKEY,                       XK_p,      setlayout,      {.v = &layouts[0]} }, /* tile */
++	{ MODKEY,                       XK_o,      setlayout,      {.v = &layouts[1]} }, /* floating */
++	{ MODKEY,                       XK_space,  setlayout,      {0} },
++	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
++	/* ===== 保留默认 (兼容) ===== */
+ 	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
+ 	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
+-	{ MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
+-	{ MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
+ 	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
+ 	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
+-	{ MODKEY,                       XK_Return, zoom,           {0} },
+-	{ MODKEY,                       XK_Tab,    view,           {0} },
+-	{ MODKEY|ShiftMask,             XK_c,      killclient,     {0} },
++	{ MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
+ 	{ MODKEY,                       XK_t,      setlayout,      {.v = &layouts[0]} },
+-	{ MODKEY,                       XK_f,      setlayout,      {.v = &layouts[1]} },
+-	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
+-	{ MODKEY,                       XK_space,  setlayout,      {0} },
+-	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
++	{ MODKEY,                       XK_f,      spawn,          {.v = dmenucmd } }, /* dmenu */
++	{ MODKEY,                       XK_b,      togglebar,      {0} },
++	{ MODKEY,                       XK_Tab,    view,           {0} },
+ 	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
+ 	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
+ 	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
+ 	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },
+ 	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
+ 	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
++	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
++	/* ===== 工作区 (Alt+数字切换, Alt+Shift+数字移动) ===== */
+ 	TAGKEYS(                        XK_1,                      0)
+ 	TAGKEYS(                        XK_2,                      1)
+ 	TAGKEYS(                        XK_3,                      2)
+@@ -95,7 +110,6 @@
+ 	TAGKEYS(                        XK_7,                      6)
+ 	TAGKEYS(                        XK_8,                      7)
+ 	TAGKEYS(                        XK_9,                      8)
+-	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
+ };
+ 
+ /* button definitions */

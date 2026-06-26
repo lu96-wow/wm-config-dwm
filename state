@@ -1,0 +1,146 @@
+# dwm-st 最小可用配置 - 步骤记录
+
+## 2026-06-26
+
+### 1. 拉取 DWM 源码 ✅
+- 官网: https://dwm.suckless.org/
+- Git: https://git.suckless.org/dwm (GnuTLS握手失败，改用tar包)
+- 版本: 6.8 (2026-01-30), 许可证: MIT/X Consortium
+- tar: https://dl.suckless.org/dwm/dwm-6.8.tar.gz
+- 已解压到: ./dwm/
+
+源码文件:
+  config.def.h, config.mk, Makefile, dwm.c (~53K), drw.c, drw.h,
+  util.c, util.h, transient.c, dwm.1, LICENSE, README
+
+依赖 (README + config.mk):
+  - Xlib header files  -> libx11-dev
+  - Xft + fontconfig   -> libxft-dev, libfontconfig1-dev
+  - Xinerama           -> libxinerama-dev
+
+构建:
+  cp config.def.h config.h
+  make clean install
+
+### 2. 拉取 ST (Simple Terminal) 源码 ✅
+- 官网: https://st.suckless.org/
+- Git: https://git.suckless.org/st
+- 版本: 0.9.3 (2025-08-09), 许可证: MIT/X Consortium
+- tar: https://dl.suckless.org/st/st-0.9.3.tar.gz
+- 已解压到: ./st/
+
+源码文件:
+  config.def.h (~20K), config.mk, Makefile, st.c (~58K), x.c (~48K),
+  st.h, win.h, arg.h, FAQ, TODO, LEGACY, LICENSE, README, st.1, st.info
+
+依赖 (README + config.mk):
+  - Xlib header files  -> libx11-dev
+  - fontconfig         -> libfontconfig1-dev
+  - freetype2          -> libfreetype-dev
+  - Xft                -> libxft-dev
+  - -lutil             -> libutempter-dev
+  - -lrt, -lm          -> 通常系统自带
+
+构建:
+  cp config.def.h config.h
+  make clean install
+
+### 3. 应用 pertag with sel 补丁 ✅
+- 补丁: dwm-pertag_with_sel-20231003-9f88553.diff (6.4K)
+- 作者: Leonardo Boss
+- 功能: 每个 tag 独立保存 layout、mfact、nmaster、barpos，并记住焦点窗口
+- 修改: dwm.c (+90/-7 行)
+
+Git 记录:
+  2c76cbc dwm 6.8 pristine (from tar)
+  ea9b713 patch: pertag with sel - 每个工作区独立布局/mfact/nmaster/barpos + 记住焦点窗口
+
+步骤:
+  git init
+  git add -A && git commit -m 'dwm 6.8 pristine'
+  git apply pertag-sel.diff
+  git add -A && git commit -m 'patch: pertag with sel'
+
+### 4. 按键配置 ✅
+MODKEY = Mod1Mask (Alt)
+
+新增函数:
+  pushclient(const Arg *arg) — 在客户端链表中交换当前窗口与相邻窗口位置
+    +1: 与下一个客户端交换 (向栈底移动)
+    -1: 与上一个客户端交换 (向主区域移动)
+
+按键绑定 (config.h):
+  Alt + Left/Right/Up/Down      → focusstack (±1)      切换焦点窗口
+  Alt + Shift + Left/Right/Up/Down → pushclient (±1)   移动焦点窗口位置
+  Alt + Enter                   → spawn st             打开终端
+  Alt + BackSpace               → killclient            关闭焦点窗口
+  Alt + 1~9                     → view tag              切换工作区
+  Alt + Shift + 1~9             → tag to workspace      移动窗口到工作区
+
+保留的默认按键:
+  Alt + j/k    → focusstack (±1)
+  Alt + h/l    → setmfact (±0.05)
+  Alt + i/d    → incnmaster (±1)
+  Alt + t/f/m  → 切换布局
+  Alt + p      → dmenu
+  Alt + Space  → 循环布局
+  Alt + Shift + Space → 切换浮动
+  Alt + b      → 切换状态栏
+  Alt + ,/.    → 切换显示器
+  Alt + Shift + q → 退出
+
+编译: ✅ 通过 (make clean install 可安装)
+
+Git 提交:
+  93e5249 config: Alt+方向键聚焦/移动窗口, Alt+Enter终端, Alt+BackSpace关闭, pushclient函数
+
+### 5. 测试脚本 ✅
+- 文件: test-dwm.sh
+- 使用 Xephyr 嵌套 X server (display :1, 800x600)
+- 命令: ./test-dwm.sh
+
+运行流程:
+  1. killall Xephyr (清理残留)
+  2. Xephyr :1 -screen 800x600 -ac -reset &
+  3. DISPLAY=:1 exec dwm
+
+### 6. 简化: 移除 pushclient ✅
+- 理由: dwm 焦点移动是线性的，方向键只需映射到 focusstack
+- 窗口移动使用 Alt+Shift+数字 (TAGKEYS 内置)
+- 修改: dwm.c (-37行), config.h (-8行 bindings)
+
+最终按键:
+  Alt + 方向键   → focusstack (线性的客户端链表前后移动)
+  Alt + Enter    → 打开终端 st
+  Alt + BackSpace → 关闭焦点窗口
+  Alt + 1~9      → 切换工作区
+  Alt + Shift+1~9 → 移动窗口到工作区
+
+Git: e9e7dc7 simplify: 移除pushclient
+
+### 6. st: 应用 scrollback-ringbuffer 补丁 ✅
+- 补丁: st-scrollback-ringbuffer-0.9.2.diff (19KB)
+- 修改: config.def.h, st.c, st.h, x.c
+- 功能: 环形缓冲区实现回滚，Shift+PageUp/PageDown 滚动
+
+Git:
+  37ff515 st 0.9.3 pristine (from tar)
+  cc52527 patch: scrollback-ringbuffer-0.9.2
+
+用法:
+  Shift + PageUp   → 向上滚动
+  Shift + PageDown → 向下滚动
+
+### 7. st 配置补丁 ✅
+- 补丁: my-st-config.patch (13行)
+- 内容: Page_Up/Down → Up/Down 方向键, 步长整页 → 3行
+
+### 8. 一键构建脚本 ✅
+- 文件: setup.sh
+- 流程: 下载tar → 解压 → 打pertag补丁 → 打scrollback补丁 → 打配置补丁 → 编译安装 → 创建lightdm入口
+
+st git:
+  332cbaa config: scrollback步长从整页改为3行
+  02f1355 config: scrollback快捷键改为Shift+↑/↓方向键
+  cc52527 patch: scrollback-ringbuffer-0.9.2
+  37ff515 st 0.9.3 pristine
