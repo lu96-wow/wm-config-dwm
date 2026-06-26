@@ -8,8 +8,8 @@
 -	{ ShiftMask,            XK_Page_Down,   kscrolldown,    {.i = -1} },
 +	{ ShiftMask,            XK_Up,          kscrollup,      {.i =  3} },
 +	{ ShiftMask,            XK_Down,        kscrolldown,    {.i =  3} },
-+	{ ControlMask|ShiftMask,XK_equal,       zoom,           {.f = +1} },
-+	{ ControlMask,          XK_minus,       zoom,           {.f = -1} },
++	{ ControlMask|ShiftMask,XK_e,           zoom,           {.f = +1} },
++	{ ControlMask|ShiftMask,XK_q,           zoom,           {.f = -1} },
  };
  
  /*
