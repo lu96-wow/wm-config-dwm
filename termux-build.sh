@@ -1,7 +1,7 @@
 #!/bin/bash
 # termux-build.sh — Termux 环境手动编译 dwm + st
 # Termux 路径与桌面 Linux 不同，需覆盖 config.mk 中的 X11 路径
-# 如果 dwm-build / st-build 已存在，跳过解压和打补丁，方便用户自定义修改
+# build 目录已存在 → 只编译；不存在 → 解压 + 打补丁 + 编译
 set -e
 BASE="$(cd "$(dirname "$0")" && pwd)"
 PREFIX="${PREFIX:-${HOME}/../usr}"
@@ -9,50 +9,49 @@ DWM_VER=6.8; ST_VER=0.9.3
 
 echo "=== Termux 编译 dwm ${DWM_VER} + st ${ST_VER} ==="
 
-# ---- 检查 ----
 echo ""
-echo "[0/6] 检查依赖 ..."
+echo "检查依赖 ..."
 for pkg in xorgproto libx11 libxft libxinerama fontconfig freetype pkg-config gcc make patch; do
     pkg list-installed "$pkg" > /dev/null 2>&1 || echo "  警告: 建议 pkg install $pkg"
 done
 
-# ---- dwm: 解压 + 补丁 ----
+# ==================== dwm ====================
 if [ -d "$BASE/dwm-build" ]; then
     echo ""
-    echo "[dwm] dwm-build 目录已存在，跳过解压和打补丁（保留用户自定义修改）"
+    echo "[dwm] dwm-build 已存在 → 只编译，不覆盖"
 else
     echo ""
-    echo "[1/5] 准备 dwm 源码 ..."
+    echo "[dwm] 解压 ..."
     cd "$BASE"
     tar xzf "dwm-${DWM_VER}.tar.gz" && mv "dwm-${DWM_VER}" dwm-build
 
-    echo "应用 dwm 补丁 ..."
+    echo "[dwm] 补丁 ..."
     cd "$BASE/dwm-build"
     cp "$BASE/dwm-pertag_with_sel-20231003-9f88553.diff" pertag-sel.diff
     patch -p1 < pertag-sel.diff
     patch -p0 < "$BASE/my-dwm-config.patch"
 fi
 
-# ---- st: 解压 + 补丁 ----
+# ==================== st ====================
 if [ -d "$BASE/st-build" ]; then
     echo ""
-    echo "[st] st-build 目录已存在，跳过解压和打补丁（保留用户自定义修改）"
+    echo "[st] st-build 已存在 → 只编译，不覆盖"
 else
     echo ""
-    echo "准备 st 源码 ..."
+    echo "[st] 解压 ..."
     cd "$BASE"
     tar xzf "st-${ST_VER}.tar.gz" && mv "st-${ST_VER}" st-build
 
-    echo "应用 st 补丁 ..."
+    echo "[st] 补丁 ..."
     cd "$BASE/st-build"
     cp "$BASE/st-scrollback-ringbuffer-0.9.2.diff" scrollback-ringbuffer.diff
     patch -p1 < scrollback-ringbuffer.diff
     patch -p0 < "$BASE/my-st-config.patch"
 fi
 
-# ---- 覆盖 config.mk 为 Termux 路径 ----
-echo "[3/5] 适配 Termux 路径 ..."
-
+# ==================== 适配 Termux 路径 ====================
+echo ""
+echo "适配 Termux 路径 ..."
 cd "$BASE/dwm-build"
 sed -i "s|^X11INC = .*|X11INC = ${PREFIX}/include|" config.mk
 sed -i "s|^X11LIB = .*|X11LIB = ${PREFIX}/lib|"   config.mk
@@ -63,8 +62,11 @@ sed -i "s|^X11INC = .*|X11INC = ${PREFIX}/include|" config.mk
 sed -i "s|^X11LIB = .*|X11LIB = ${PREFIX}/lib|"   config.mk
 sed -i "s|^# CC = .*|CC = gcc|"                     config.mk
 
-# ---- 手动编译 dwm ----
-echo "[4/5] 编译 dwm ..."
+# ==================== 编译 dwm ====================
+echo ""
+echo "============================================"
+echo " 编译 dwm ..."
+echo "============================================"
 cd "$BASE/dwm-build"
 cp config.def.h config.h
 gcc -std=c99 -pedantic -Wall -Os \
@@ -77,8 +79,9 @@ gcc -o dwm drw.o dwm.o util.o \
     -L${PREFIX}/lib -lX11 -lXinerama -lfontconfig -lXft
 echo "  dwm: $(file dwm | cut -d, -f1)"
 
-# ---- 手动编译 st ----
-echo "[5/5] 编译 st ..."
+# ==================== 编译 st ====================
+echo ""
+echo "编译 st ..."
 cd "$BASE/st-build"
 cp config.def.h config.h
 gcc -O1 \

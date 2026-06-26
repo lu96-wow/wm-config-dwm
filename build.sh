@@ -1,6 +1,6 @@
 #!/bin/bash
 # build.sh — 解压、打补丁、编译 dwm + st (不安装)
-# 如果 dwm-build / st-build 已存在，跳过解压和打补丁，方便用户自定义修改
+# build 目录已存在 → 只编译；不存在 → 解压 + 打补丁 + 编译
 set -e
 BASE="$(cd "$(dirname "$0")" && pwd)"
 DWM_VER=6.8; ST_VER=0.9.3
@@ -13,59 +13,64 @@ echo "============================================"
 echo " dwm ${DWM_VER} + st ${ST_VER} 编译"
 echo "============================================"
 
-echo ""
-echo "[0/6] 检查本地文件 ..."
-MISSING=""
-for f in "$DWM_TGZ" "$ST_TGZ" "$PERTAG" "$SCROLL" \
-         "my-dwm-config.patch" "my-st-config.patch"; do
-    [ -f "$BASE/$f" ] || { echo "  缺失: $f"; MISSING=1; }
-done
-[ -n "$MISSING" ] && { echo "请将上述文件放到 $BASE"; exit 1; }
-echo "  全部就绪"
-
 cd "$BASE"
 
-# ---- dwm ----
+# ==================== dwm ====================
 if [ -d "$BASE/dwm-build" ]; then
     echo ""
-    echo "[dwm] dwm-build 目录已存在，跳过解压和打补丁（保留用户自定义修改）"
+    echo "[dwm] dwm-build 已存在 → 只编译，不覆盖"
 else
     echo ""
-    echo "[1/6] 解压 dwm ..."
+    echo "[dwm] 检查文件 ..."
+    for f in "$DWM_TGZ" "$PERTAG" "my-dwm-config.patch"; do
+        [ -f "$BASE/$f" ] || { echo "  缺失: $f"; exit 1; }
+    done
+    echo "  就绪"
+
+    echo "[dwm] 解压 ..."
     tar xzf "$DWM_TGZ" && mv "dwm-${DWM_VER}" dwm-build
 
-    echo "[2/6] dwm: pertag with sel ..."
+    echo "[dwm] pertag 补丁 ..."
     cd "$BASE/dwm-build"
     cp "$BASE/$PERTAG" pertag-sel.diff
     patch -p1 < pertag-sel.diff
 
-    echo "[3/6] dwm: 应用配置补丁 ..."
-    cd "$BASE/dwm-build" && patch -p0 < "$BASE/my-dwm-config.patch"
+    echo "[dwm] 配置补丁 ..."
+    patch -p0 < "$BASE/my-dwm-config.patch"
 fi
 
-# ---- st ----
+# ==================== st ====================
 if [ -d "$BASE/st-build" ]; then
     echo ""
-    echo "[st] st-build 目录已存在，跳过解压和打补丁（保留用户自定义修改）"
+    echo "[st] st-build 已存在 → 只编译，不覆盖"
 else
     echo ""
-    echo "[4/6] 解压 st ..."
+    echo "[st] 检查文件 ..."
+    for f in "$ST_TGZ" "$SCROLL" "my-st-config.patch"; do
+        [ -f "$BASE/$f" ] || { echo "  缺失: $f"; exit 1; }
+    done
+    echo "  就绪"
+
+    echo "[st] 解压 ..."
     cd "$BASE"
     tar xzf "$ST_TGZ" && mv "st-${ST_VER}" st-build
 
-    echo "[5/6] st: scrollback ringbuffer ..."
+    echo "[st] scrollback 补丁 ..."
     cd "$BASE/st-build"
     cp "$BASE/$SCROLL" scrollback-ringbuffer.diff
     patch -p1 < scrollback-ringbuffer.diff
 
-    echo "[6/6] st: 应用配置补丁 ..."
-    cd "$BASE/st-build" && patch -p0 < "$BASE/my-st-config.patch"
+    echo "[st] 配置补丁 ..."
+    patch -p0 < "$BASE/my-st-config.patch"
 fi
 
+# ==================== 编译 ====================
 echo ""
-echo "编译 ..."
+echo "============================================"
+echo " 编译 ..."
+echo "============================================"
 cd "$BASE/dwm-build" && make clean && make
-cd "$BASE/st-build" && make clean && make
+cd "$BASE/st-build"   && make clean && make
 
 echo ""
 echo "============================================"
