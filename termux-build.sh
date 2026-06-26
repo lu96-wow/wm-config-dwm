@@ -1,6 +1,7 @@
 #!/bin/bash
 # termux-build.sh — Termux 环境手动编译 dwm + st
 # Termux 路径与桌面 Linux 不同，需覆盖 config.mk 中的 X11 路径
+# 如果 dwm-build / st-build 已存在，跳过解压和打补丁，方便用户自定义修改
 set -e
 BASE="$(cd "$(dirname "$0")" && pwd)"
 PREFIX="${PREFIX:-${HOME}/../usr}"
@@ -15,24 +16,39 @@ for pkg in xorgproto libx11 libxft libxinerama fontconfig freetype pkg-config gc
     pkg list-installed "$pkg" > /dev/null 2>&1 || echo "  警告: 建议 pkg install $pkg"
 done
 
-# ---- 解压 + 补丁 (复用 build.sh 前 5 步) ----
-echo ""
-echo "[1/5] 准备源码 ..."
-cd "$BASE"
-rm -rf dwm-build st-build
-tar xzf "dwm-${DWM_VER}.tar.gz" && mv "dwm-${DWM_VER}" dwm-build
-tar xzf "st-${ST_VER}.tar.gz"     && mv "st-${ST_VER}" st-build
+# ---- dwm: 解压 + 补丁 ----
+if [ -d "$BASE/dwm-build" ]; then
+    echo ""
+    echo "[dwm] dwm-build 目录已存在，跳过解压和打补丁（保留用户自定义修改）"
+else
+    echo ""
+    echo "[1/5] 准备 dwm 源码 ..."
+    cd "$BASE"
+    tar xzf "dwm-${DWM_VER}.tar.gz" && mv "dwm-${DWM_VER}" dwm-build
 
-echo "[2/5] 应用补丁 ..."
-cd "$BASE/dwm-build"
-cp "$BASE/dwm-pertag_with_sel-20231003-9f88553.diff" pertag-sel.diff
-patch -p1 < pertag-sel.diff
-patch -p0 < "$BASE/my-dwm-config.patch"
+    echo "应用 dwm 补丁 ..."
+    cd "$BASE/dwm-build"
+    cp "$BASE/dwm-pertag_with_sel-20231003-9f88553.diff" pertag-sel.diff
+    patch -p1 < pertag-sel.diff
+    patch -p0 < "$BASE/my-dwm-config.patch"
+fi
 
-cd "$BASE/st-build"
-cp "$BASE/st-scrollback-ringbuffer-0.9.2.diff" scrollback-ringbuffer.diff
-patch -p1 < scrollback-ringbuffer.diff
-patch -p0 < "$BASE/my-st-config.patch"
+# ---- st: 解压 + 补丁 ----
+if [ -d "$BASE/st-build" ]; then
+    echo ""
+    echo "[st] st-build 目录已存在，跳过解压和打补丁（保留用户自定义修改）"
+else
+    echo ""
+    echo "准备 st 源码 ..."
+    cd "$BASE"
+    tar xzf "st-${ST_VER}.tar.gz" && mv "st-${ST_VER}" st-build
+
+    echo "应用 st 补丁 ..."
+    cd "$BASE/st-build"
+    cp "$BASE/st-scrollback-ringbuffer-0.9.2.diff" scrollback-ringbuffer.diff
+    patch -p1 < scrollback-ringbuffer.diff
+    patch -p0 < "$BASE/my-st-config.patch"
+fi
 
 # ---- 覆盖 config.mk 为 Termux 路径 ----
 echo "[3/5] 适配 Termux 路径 ..."
