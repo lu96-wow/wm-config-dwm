@@ -36,7 +36,7 @@ else
     patch -p1 < pertag-sel.diff
 
     echo "[dwm] 配置补丁 ..."
-    patch -p0 < "$BASE/my-dwm-config.patch"
+    patch -p1 < "$BASE/my-dwm-config.patch"
 fi
 
 # ==================== st ====================

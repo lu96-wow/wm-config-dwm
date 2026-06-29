@@ -29,7 +29,7 @@ else
     cd "$BASE/dwm-build"
     cp "$BASE/dwm-pertag_with_sel-20231003-9f88553.diff" pertag-sel.diff
     patch -p1 < pertag-sel.diff
-    patch -p0 < "$BASE/my-dwm-config.patch"
+    patch -p1 < "$BASE/my-dwm-config.patch"
 fi
 
 # ==================== st ====================
