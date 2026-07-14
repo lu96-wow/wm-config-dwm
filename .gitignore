@@ -3,3 +3,4 @@ st-build/
 *.o
 dwm/dwm
 st/st
+baseline/

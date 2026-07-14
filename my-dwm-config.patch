@@ -1,13 +1,16 @@
-diff --git a/dwm.c b/dwm.c
-@@ -212,6 +212,7 @@
+--- baseline/dwm-baseline/dwm.c	2026-07-14 08:01:45.926914334 +0800
++++ dwm-build/dwm.c	2026-07-14 08:04:02.497048184 +0800
+@@ -212,6 +212,9 @@
  static void tile(Monitor *m);
  static void togglebar(const Arg *arg);
  static void togglefloating(const Arg *arg);
 +static void togglefullscreen(const Arg *arg);
++static void killworkspace(const Arg *arg);
++static void pushclient(const Arg *arg);
  static void toggletag(const Arg *arg);
  static void toggleview(const Arg *arg);
  static void unfocus(Client *c, int setfocus);
-@@ -1764,6 +1765,14 @@
+@@ -1764,6 +1767,109 @@
  }
  
  void
@@ -19,10 +22,106 @@ diff --git a/dwm.c b/dwm.c
 +}
 +
 +void
++killworkspace(const Arg *arg)
++{
++	Client *c;
++	Window *wins;
++	int i, n = 0;
++	unsigned int curtag;
++
++	curtag = selmon->pertag->curtag;
++	if (curtag == 0)
++		return;
++
++	for (c = selmon->clients; c; c = c->next)
++		if (c->tags & (1 << (curtag - 1)))
++			n++;
++	if (n == 0)
++		return;
++
++	wins = ecalloc(n, sizeof(Window));
++	for (i = 0, c = selmon->clients; c; c = c->next)
++		if (c->tags & (1 << (curtag - 1)))
++			wins[i++] = c->win;
++
++	for (i = 0; i < n; i++) {
++		c = wintoclient(wins[i]);
++		if (c) {
++			if (!sendevent(c, wmatom[WMDelete])) {
++				XGrabServer(dpy);
++				XSetErrorHandler(xerrordummy);
++				XSetCloseDownMode(dpy, DestroyAll);
++				XKillClient(dpy, c->win);
++				XSync(dpy, False);
++				XSetErrorHandler(xerror);
++				XUngrabServer(dpy);
++			}
++		}
++	}
++	free(wins);
++
++	selmon->pertag->nmasters[curtag] = nmaster;
++	selmon->pertag->mfacts[curtag] = mfact;
++	selmon->pertag->ltidxs[curtag][0] = &layouts[0];
++	selmon->pertag->ltidxs[curtag][1] = &layouts[1 % LENGTH(layouts)];
++	selmon->pertag->sellts[curtag] = 0;
++	selmon->pertag->showbars[curtag] = showbar;
++	selmon->pertag->sel[curtag] = NULL;
++
++	selmon->nmaster = selmon->pertag->nmasters[curtag];
++	selmon->mfact = selmon->pertag->mfacts[curtag];
++	selmon->sellt = selmon->pertag->sellts[curtag];
++	selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[curtag][selmon->sellt];
++	selmon->lt[selmon->sellt^1] = selmon->pertag->ltidxs[curtag][selmon->sellt^1];
++
++	focus(NULL);
++	arrange(selmon);
++}
++
++void
++pushclient(const Arg *arg)
++{
++	Client *sel = selmon->sel, *c;
++
++	if (!sel || (sel->isfullscreen && lockfullscreen))
++		return;
++
++	if (arg->i > 0) {
++		c = sel->next;
++		if (!c)
++			return;
++		detach(sel);
++		detachstack(sel);
++		detach(c);
++		detachstack(c);
++		attach(sel);
++		attach(c);
++		attachstack(sel);
++		attachstack(c);
++	} else {
++		if (selmon->clients == sel)
++			return;
++		for (c = selmon->clients; c && c->next != sel; c = c->next);
++		detach(sel);
++		detachstack(sel);
++		detach(c);
++		detachstack(c);
++		attach(c);
++		attach(sel);
++		attachstack(c);
++		attachstack(sel);
++	}
++
++	arrange(selmon);
++	focus(sel);
++}
++
++void
  toggletag(const Arg *arg)
  {
  	unsigned int newtags;
-diff --git a/config.def.h b/config.h
+--- baseline/dwm-baseline/config.def.h	2026-01-30 18:19:28.660280483 +0800
++++ dwm-build/config.def.h	2026-07-14 08:04:07.207328310 +0800
 @@ -1,10 +1,10 @@
  /* See LICENSE file for copyright and license details. */
  
@@ -85,7 +184,7 @@ diff --git a/config.def.h b/config.h
  #define MODKEY Mod1Mask
  #define TAGKEYS(KEY,TAG) \
  	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
-@@ -53,39 +43,44 @@
+@@ -53,39 +43,47 @@
  	{ MODKEY|ShiftMask,             KEY,      tag,            {.ui = 1 << TAG} }, \
  	{ MODKEY|ControlMask|ShiftMask, KEY,      toggletag,      {.ui = 1 << TAG} },
  
@@ -105,10 +204,13 @@ diff --git a/config.def.h b/config.h
 -	{ MODKEY,                       XK_b,      togglebar,      {0} },
 +	{ MODKEY,                       XK_Left,   focusstack,     {.i = -1 } },
 +	{ MODKEY,                       XK_Right,  focusstack,     {.i = +1 } },
++	{ MODKEY|ShiftMask,             XK_Left,   pushclient,     {.i = -1 } },
++	{ MODKEY|ShiftMask,             XK_Right,  pushclient,     {.i = +1 } },
 +	{ MODKEY,                       XK_Up,     focusstack,     {.i = -1 } },
 +	{ MODKEY,                       XK_Down,   focusstack,     {.i = +1 } },
 +	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
 +	{ MODKEY,                       XK_BackSpace, killclient,  {0} },
++	{ MODKEY|ShiftMask,             XK_BackSpace, killworkspace, {0} },
 +	{ MODKEY,                       XK_d,      setmfact,       {.f = +0.05} },
 +	{ MODKEY,                       XK_a,      setmfact,       {.f = -0.05} },
 +	{ MODKEY,                       XK_c,      incnmaster,     {.i = +1 } },
@@ -146,7 +248,7 @@ diff --git a/config.def.h b/config.h
  	TAGKEYS(                        XK_1,                      0)
  	TAGKEYS(                        XK_2,                      1)
  	TAGKEYS(                        XK_3,                      2)
-@@ -95,13 +90,9 @@
+@@ -95,13 +93,9 @@
  	TAGKEYS(                        XK_7,                      6)
  	TAGKEYS(                        XK_8,                      7)
  	TAGKEYS(                        XK_9,                      8)
@@ -160,7 +262,7 @@ diff --git a/config.def.h b/config.h
  	{ ClkLtSymbol,          0,              Button1,        setlayout,      {0} },
  	{ ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
  	{ ClkWinTitle,          0,              Button2,        zoom,           {0} },
-@@ -114,4 +105,3 @@
+@@ -114,4 +108,3 @@
  	{ ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
  	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
  };
